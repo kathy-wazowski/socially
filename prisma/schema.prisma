@@ -25,4 +25,106 @@ model User {
   website   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  //relations
+  // "give me all my Posts" (no configuration needed)
+  posts    Post[] //one to many
+  comments Comment[] //one to many
+  likes    Like[] //one to many
+
+  followers Follows[] @relation("myFollowers")
+  following Follows[] @relation("usersIFollow")
+
+  //这里用 @relation + name 是因为notification and nofificationsCreated都指向Notification 
+  notifications        Notification[] @relation("receivedNotifications")
+  nofificationsCreated Notification[] @relation("createdNotifications")
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  authorId  String // This is the foreign key referencing User's id
+  content   String?
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  //relations
+  // The Post needs to know "which User is my author?" (needs configuration)
+  // Cascade delete means delete all the posts if author is deleted
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // "give me all my comments" (no configuration needed)
+  comments      Comment[]
+  likes         Like[]
+  notifications Notification[]
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  authorId  String // This is the foreign key referencing User's id
+  postId    String
+  createdAt DateTime @default(now())
+
+  //relation
+  author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  //when user is deleted, all his comments will be deleted
+  post          Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  notifications Notification[]
+
+  @@index([authorId, postId]) //compisite index for faster queries
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  //relations
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId]) // this prevents users to like a post twice
+  @@index([userId, postId])
+}
+
+model Follows {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  //relations
+  follower  User @relation("myFollowers", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("usersIFollow", fields: [followingId], references: [id], onDelete: Cascade)
+
+  // the combination of both fields must be unique
+  // composite primary key prevents duplicated follows
+  @@id([followerId, followingId])
+  @@index([followerId, followingId]) // composite index for faster query
+}
+
+enum NotificationType {
+  LIKE
+  COMMENT
+  FOLLOW
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  creatorId String
+  type      NotificationType
+  read      Boolean          @default(false)
+  postId    String?
+  commentId String?
+  createdAt DateTime         @default(now())
+
+  //relations
+  user    User     @relation("receivedNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  creator User     @relation("createdNotifications", fields: [creatorId], references: [id], onDelete: Cascade)
+  post    Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
