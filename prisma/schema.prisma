@@ -32,8 +32,10 @@ model User {
   comments Comment[] //one to many
   likes    Like[] //one to many
 
-  followers Follows[] @relation("myFollowers")
-  following Follows[] @relation("usersIFollow")
+  // follow 里面的 followingId 是我，那表示这些follow都是我的followers
+  followers Follows[] @relation("following") // This will count records where you are the followingId
+  // follow 里面的 followerId 是我，那表示这些follow都是我的following
+  following Follows[] @relation("follower") // This will count records where you are the followerId
 
   //这里用 @relation + name 是因为notification and nofificationsCreated都指向Notification 
   notifications        Notification[] @relation("receivedNotifications")
@@ -95,8 +97,8 @@ model Follows {
   createdAt   DateTime @default(now())
 
   //relations
-  follower  User @relation("myFollowers", fields: [followerId], references: [id], onDelete: Cascade)
-  following User @relation("usersIFollow", fields: [followingId], references: [id], onDelete: Cascade)
+  follower  User @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
 
   // the combination of both fields must be unique
   // composite primary key prevents duplicated follows
